@@ -8,6 +8,7 @@ import TextDisplay from "./components/TextDisplay";
 require("./sass/app.scss");
 require("./font-awesome/css/font-awesome.css");
 
+
 class App extends React.Component {
   constructor(props) {
     super(props);
@@ -16,7 +17,7 @@ class App extends React.Component {
       wpm: 0,
       index: 0,
       value: "",
-      token: "",
+      token: "22",
       error: false,
       errorCount: 0,
       timeElapsed: 0,
@@ -29,8 +30,16 @@ class App extends React.Component {
 
   async componentDidMount() {
     this.intervals = [];
-    this.setupCurrentUser();
+    this.getExcerpts();
+    // this.setupCurrentUser();
   }
+
+  getExcerpts = async () => {
+    const response = await fetch("https://127.0.0.1:5000/excerpts");
+    const data = await response.json()
+    console.log('data', data)
+  };
+
 
   setupCurrentUser = () => {
     const existingToken = sessionStorage.getItem("token");
@@ -114,6 +123,7 @@ class App extends React.Component {
         lineView: false,
         startTime: null,
         completed: false,
+        result: null,
         excerpt: this._randomElement(this.props.excerpts)
       },
       () => this.intervals.map(clearInterval)
@@ -150,7 +160,8 @@ class App extends React.Component {
       })
     });
     const data = await resp.json();
-    if (data.code === 200) {
+    if (resp.ok) {
+      this.setState({ result: data })
     } else {
       this.setState({ error: "Could not post score" });
     }
@@ -160,8 +171,9 @@ class App extends React.Component {
     const elapsed = new Date().getTime() - this.state.startTime;
     let wpm;
     if (this.state.completed) {
+      // finnish the gameeeeee
       wpm = (this.state.excerpt.split(" ").length / (elapsed / 1000)) * 60;
-      // this.postScore(wpm, elapsed);
+      this.postScore(wpm, elapsed);
     } else {
       let words = this.state.excerpt.slice(0, this.state.index).split(" ")
         .length;
@@ -173,6 +185,7 @@ class App extends React.Component {
   };
 
   renderGame = () => {
+    const excerpt =  this.state.result ? this.state.result.excerpt : null
     return (
       <>
         <TextDisplay
@@ -189,6 +202,18 @@ class App extends React.Component {
           setupIntervals={this._setupIntervals}
           onInputChange={this._handleInputChange}
         />
+        <div>
+          {excerpt && 
+          <>
+            <small> {excerpt.body} </small>
+            have  {excerpt.scores.count} scores, and the top 3 are:
+        {excerpt.scores.top.map(score => {
+              return <li> score:  {score.wpm}</li>
+            })}
+          </>
+          }
+
+        </div>
         <div className={this.state.completed ? "stats completed" : "stats"}>
           <Clock elapsed={this.state.timeElapsed} />
           <span className="wpm">{this.state.wpm}</span>
@@ -200,14 +225,14 @@ class App extends React.Component {
 
   renderSignin = () => {
     return (
-      <div classname="signin">
-          <h1>Please Sign In</h1>
-          <input 
-            autoFocus
-            placeholder="Email"
-          />
-          <input 
-          />
+      <div className="signin">
+        <h1>Please Sign In</h1>
+        <input
+          autoFocus
+          placeholder="Email"
+        />
+        <input
+        />
       </div>
     )
   }
@@ -219,13 +244,14 @@ class App extends React.Component {
           <h1>Type Racing</h1>
           <i onClick={this._restartGame} className="fa fa-lg fa-refresh"></i>
           <i className="fa fa-lg fa-bars" onClick={this._changeView}></i>
-          {this.state.token && this.state.token.length > 3 ? (
+          {this.state.token && this.state.token.length > 1 ? (
             <div>Sign Out</div>
           ) : (
-            <div> Sign In</div>
-          )}
+              <div> Sign In</div>
+            )}
         </div>
-        {this.state.token && this.state.token.length > 3 ? this.renderGame() : this.renderSignin()} 
+        {this.state.token && this.state.token.length > 1 ? this.renderGame() : this.renderSignin()}
+
         <Footer />
       </>
     );
